@@ -2,6 +2,9 @@ import numpy as np
 
 from scipy.optimize import fmin_bfgs
 
+from ..base import BaseEstimator, ClassifierMixin
+from ..cross_val import KFold
+
 
 def fit_platt_logreg(score, y):
     y = np.asanyarray(y).ravel()
@@ -34,8 +37,6 @@ def fit_platt_logreg(score, y):
         z = a * n_score + b
         ll_p = np.log1p(np.exp(-z))
         ll_n = np.log1p(np.exp(z))
-        #print "logloss" + "-"*70
-        #print "a", a, "b", b, "z", z, "ll_p", ll_p, "ll_n", ll_n
         return (one_minus_yy * ll_n + yy * ll_p).sum()
 
     def ddx_logloss(x):
@@ -49,8 +50,6 @@ def fit_platt_logreg(score, y):
         ddb_ll_n =  1 / (1 + exp_m_z)
         gradient = np.array([(one_minus_yy * dda_ll_n + yy * dda_ll_p).sum(),
                              (one_minus_yy * ddb_ll_n + yy * ddb_ll_p).sum()])
-        #print "ddx_logloss" + "-"*70
-        #print "a", a, "b", b, "gradient", gradient
         return gradient
 
     # FIXME check if fmin_bfgs converges
@@ -58,17 +57,45 @@ def fit_platt_logreg(score, y):
     return a / score_std, b - a * score_mean / score_std
 
 
-class PlattScaler(Classifier?):
+class PlattScaler(BaseEstimator, ClassifierMixin):
     """Predicting Good Probabilities With Supervised Learning"""
 
-    def __init__(self, clf):
-        self.clf
+    def __init__(self, classifier):
+        self.classifier = classifier
+        self.a = None
+        self.b = None
 
-    def fit(self, X, y, cv=None, **params):
-        np.concatenate([...])
-        pass
+    def fit(self, X, y, cv=None, **fit_params):
+        #FIXME check number of classes
+        self._set_params(**fit_params)
+        if cv is None:
+            cv = KFold(y.size, k=5)
 
-    def predict_proba(self, y):
-        pass
+        clf = self.classifier
+        score_list = []
+        y_list = []
+        for train_index, test_index in cv:
+            print train_index.shape, test_index.shape
+            X_train, X_test = X[train_index], X[test_index]
+            y_train, y_test = y[train_index], y[test_index]
 
+            clf.fit(X_train, y_train)
+            score = clf.decision_function(X_test)
+            score_list.append(score)
+            y_list.append(y_test)
 
+        yy = np.concatenate(y_list)
+        scores = np.concatenate(score_list)
+
+        self.a, self.b = fit_platt_logreg(scores, yy)
+        self.classifier.fit(X, y)
+        return self
+
+    def predict_proba(self, X):
+        score = self.classifier.decision_function(X)
+        proba = 1. / (1. + np.exp(-(self.a * score + self.b)))
+        return np.hstack((1. - proba, proba))
+
+    def predict(self, X):
+        #FIXME
+        return self.predict_proba(X) > .5

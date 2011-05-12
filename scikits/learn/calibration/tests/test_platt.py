@@ -1,7 +1,9 @@
 import numpy as np
 from numpy.testing import assert_almost_equal
 
-from ..platt import fit_platt_logreg
+from ..platt import fit_platt_logreg, PlattScaler
+from ...svm import SVC
+from ...cross_val import KFold
 
 def test_fit_platt_simple():
     """test platt optimization on a simple hand calculated case"""
@@ -34,5 +36,20 @@ def test_fit_plat_synthetic():
         score  [i: i + n_score] = score_
 
     a, b = fit_platt_logreg(score, outcome)
-    assert_almost_equal(a, test_a, decimal=3)
-    assert_almost_equal(b, test_b, decimal=3)
+    assert_almost_equal(a, test_a, decimal=2)
+    assert_almost_equal(b, test_b, decimal=2)
+
+
+def test_platt_scaler():
+    """compare PlattScaler with libsvm builtin scaler"""
+    X = np.array([0., 0.5, 1., 1.2, 2.] * 20).reshape((-1, 1))
+    y = np.array([0,  0,   1,  0,   1 ] * 20)
+
+    svc_proba = SVC(probability=True, C=100.)
+    ref_proba = svc_proba.fit(X, y).predict_proba(1.3)
+
+    cv = KFold(y.size, k=5) # same cross val as libsvm
+    platt_scaler = PlattScaler(SVC(C=100.))
+    proba = platt_scaler.fit(X, y, cv=cv).predict_proba(1.3)
+
+    assert_almost_equal(proba, ref_proba, decimal=3)
