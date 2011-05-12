@@ -48,8 +48,9 @@ def fit_platt_logreg(score, y):
         dda_ll_n =  n_score / (1 + exp_m_z)
         ddb_ll_p = -1 / (1 + exp_z)
         ddb_ll_n =  1 / (1 + exp_m_z)
-        gradient = np.array([(one_minus_yy * dda_ll_n + yy * dda_ll_p).sum(),
-                             (one_minus_yy * ddb_ll_n + yy * ddb_ll_p).sum()])
+        dda_logloss = (one_minus_yy * dda_ll_n + yy * dda_ll_p).sum()
+        ddb_logloss = (one_minus_yy * ddb_ll_n + yy * ddb_ll_p).sum()
+        gradient = np.array([dda_logloss, ddb_logloss])
         return gradient
 
     # FIXME check if fmin_bfgs converges
