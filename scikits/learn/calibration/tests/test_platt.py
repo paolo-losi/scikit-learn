@@ -5,6 +5,7 @@ from ..platt import fit_platt_logreg, PlattScaler
 from ...svm import SVC
 from ...cross_val import KFold
 
+
 def test_fit_platt_simple():
     """test platt optimization on a simple hand calculated case"""
 
@@ -31,7 +32,7 @@ def test_fit_plat_synthetic():
     score   = np.empty((n_score * sample_per_score))
     proba_ = 1. / (1. + np.exp(-(test_a * score_ + test_b)))
     for i in range(0, n_score * sample_per_score, n_score):
-        proba_limit = (i + n_score/2.) / (n_score * sample_per_score)
+        proba_limit = (i + n_score / 2.) / (n_score * sample_per_score)
         outcome[i: i + n_score][proba_ > proba_limit] = 1
         score  [i: i + n_score] = score_
 
@@ -48,7 +49,7 @@ def test_platt_scaler():
     svc_proba = SVC(probability=True, C=100.)
     ref_proba = svc_proba.fit(X, y).predict_proba(1.3)
 
-    cv = KFold(y.size, k=5) # same cross val as libsvm
+    cv = KFold(y.size, k=5)  # same cross val as libsvm
     platt_scaler = PlattScaler(SVC(C=100.))
     proba = platt_scaler.fit(X, y, cv=cv).predict_proba(1.3)
 
